@@ -16,3 +16,14 @@ uvicorn
 bcrypt
 passlib
 python-jose
+bcrypt
+fastapi
+pandas
+passlib
+psycopg2-binary
+pydantic
+python-jose
+python-multipart
+sqlalchemy
+tabulate
+uvicorn[standard]
