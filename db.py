@@ -1,13 +1,15 @@
 # db.py
+import os
 from sqlalchemy import create_engine
 import psycopg2
+import urllib.parse
 
-# Database credentials
-DB_HOST = "localhost"
-DB_NAME = "mart_db"
-DB_USER = "postgres"
-DB_PASS = "Deepak@7060"
-DB_PORT = 5432
+# Database credentials from environment variables
+DB_HOST = os.getenv("PGHOST", "localhost")
+DB_NAME = os.getenv("PGDATABASE", "mart_db")
+DB_USER = os.getenv("PGUSER", "postgres")
+DB_PASS = os.getenv("PGPASSWORD", "")
+DB_PORT = os.getenv("PGPORT", "5432")
 
 
 def get_connection():
@@ -35,7 +37,8 @@ def get_connection_string():
     Example format:
     postgresql+psycopg2://user:password@host:port/database
     """
-    return f"postgresql+psycopg2://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    encoded_pass = urllib.parse.quote_plus(DB_PASS)
+    return f"postgresql+psycopg2://{DB_USER}:{encoded_pass}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
 
 def get_engine():
@@ -44,7 +47,7 @@ def get_engine():
     Use this in reports.py with pandas or SQLAlchemy ORM.
     """
     try:
-        engine = create_engine(get_connection_string())
+        engine = create_engine(get_connection_string(), pool_pre_ping=True)
         return engine
     except Exception as e:
         print(f"Error creating SQLAlchemy engine: {e}")
