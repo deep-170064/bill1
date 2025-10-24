@@ -9,16 +9,18 @@ function Dashboard() {
   const [categorySales, setCategorySales] = useState([]);
   const [topProducts, setTopProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [dateRange, setDateRange] = useState(7);
 
   useEffect(() => {
     loadDashboardData();
-  }, []);
+  }, [dateRange]);
 
   const loadDashboardData = async () => {
+    setLoading(true);
     try {
       const [statsRes, salesRes, categoryRes, productsRes] = await Promise.all([
         dashboard.getStats(),
-        reports.getSalesByDate(7),
+        reports.getSalesByDate(dateRange),
         reports.getCategorySales(),
         reports.getTopProducts(5),
       ]);
@@ -43,8 +45,19 @@ function Dashboard() {
   return (
     <div className="dashboard">
       <div className="dashboard-header">
-        <h1>📊 Dashboard Overview</h1>
-        <p className="dashboard-subtitle">Welcome back! Here's your business summary</p>
+        <div>
+          <h1>📊 Dashboard Overview</h1>
+          <p className="dashboard-subtitle">Welcome back! Here's your business summary</p>
+        </div>
+        <div className="date-range-selector">
+          <label>Sales Period:</label>
+          <select value={dateRange} onChange={(e) => setDateRange(Number(e.target.value))}>
+            <option value={7}>Last 7 Days</option>
+            <option value={14}>Last 14 Days</option>
+            <option value={30}>Last 30 Days</option>
+            <option value={90}>Last 90 Days</option>
+          </select>
+        </div>
       </div>
       
       <div className="stats-grid">
@@ -101,7 +114,7 @@ function Dashboard() {
 
       <div className="charts-grid">
         <div className="chart-card">
-          <h2>📈 Sales Trend (Last 7 Days)</h2>
+          <h2>📈 Sales Trend (Last {dateRange} Days)</h2>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={salesTrend}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />

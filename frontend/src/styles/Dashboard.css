@@ -16,6 +16,11 @@
 
 .dashboard-header {
   margin-bottom: 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px;
 }
 
 .dashboard-header h1 {
@@ -31,6 +36,40 @@
 .dashboard-subtitle {
   color: #666;
   font-size: 1rem;
+}
+
+.date-range-selector {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: white;
+  padding: 12px 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.date-range-selector label {
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.date-range-selector select {
+  padding: 8px 16px;
+  border: 2px solid #e9ecef;
+  border-radius: 8px;
+  background: white;
+  font-size: 1em;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.date-range-selector select:hover {
+  border-color: #667eea;
+}
+
+.date-range-selector select:focus {
+  outline: none;
+  border-color: #667eea;
 }
 
 .stats-grid {

@@ -22,10 +22,16 @@ export const products = {
 
 export const categories = {
   getAll: () => api.get('/categories'),
+  add: (category) => api.post('/categories', category),
+  update: (categoryId, category) => api.put(`/categories/${categoryId}`, category),
+  delete: (categoryId) => api.delete(`/categories/${categoryId}`),
 };
 
 export const suppliers = {
   getAll: () => api.get('/suppliers'),
+  add: (supplier) => api.post('/suppliers', supplier),
+  update: (supplierId, supplier) => api.put(`/suppliers/${supplierId}`, supplier),
+  delete: (supplierId) => api.delete(`/suppliers/${supplierId}`),
 };
 
 export const sales = {
@@ -56,6 +62,14 @@ export const reports = {
 
 export const notifications = {
   getAll: () => api.get('/notifications'),
+  update: (notificationId, status) => api.put(`/notifications/${notificationId}`, { status }),
+};
+
+export const purchaseOrders = {
+  getAll: () => api.get('/purchase-orders'),
+  getDetails: (orderId) => api.get(`/purchase-orders/${orderId}`),
+  create: (order) => api.post('/purchase-orders', order),
+  receive: (orderId) => api.put(`/purchase-orders/${orderId}/receive`),
 };
 
 export default api;

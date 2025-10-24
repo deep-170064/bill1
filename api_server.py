@@ -63,6 +63,24 @@ class StockUpdate(BaseModel):
     product_id: int
     quantity: int
 
+class Category(BaseModel):
+    name: str
+    description: Optional[str] = None
+
+class Supplier(BaseModel):
+    name: str
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    address: Optional[str] = None
+
+class PurchaseOrder(BaseModel):
+    supplier_id: int
+    items: List[dict]  # List of {product_id, quantity, unit_price}
+    status: str = "PENDING"
+
+class NotificationUpdate(BaseModel):
+    status: str
+
 @app.get("/")
 async def root():
     return {"message": "SuperMarket Management API", "version": "1.0"}
@@ -186,14 +204,122 @@ async def get_categories():
 async def get_suppliers():
     try:
         with engine.connect() as conn:
-            result = conn.execute(text("SELECT supplier_id, name, phone, email, address FROM suppliers ORDER BY name"))
+            result = conn.execute(text("SELECT supplier_id, name, phone, email, address, reliability_score FROM suppliers ORDER BY name"))
             rows = result.fetchall()
         
         suppliers = [
-            {"supplier_id": r[0], "name": r[1], "phone": r[2], "email": r[3], "address": r[4]}
+            {"supplier_id": r[0], "name": r[1], "phone": r[2], "email": r[3], "address": r[4], "reliability_score": r[5]}
             for r in rows
         ]
         return {"suppliers": suppliers}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/suppliers")
+async def add_supplier(supplier: Supplier):
+    try:
+        with engine.begin() as conn:
+            result = conn.execute(text("""
+                INSERT INTO suppliers (name, phone, email, address)
+                VALUES (:name, :phone, :email, :address)
+                RETURNING supplier_id
+            """), {
+                "name": supplier.name,
+                "phone": supplier.phone,
+                "email": supplier.email,
+                "address": supplier.address
+            })
+            supplier_id = result.fetchone()[0]
+        return {"message": "Supplier added successfully", "supplier_id": supplier_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.put("/api/suppliers/{supplier_id}")
+async def update_supplier(supplier_id: int, supplier: Supplier):
+    try:
+        with engine.begin() as conn:
+            result = conn.execute(text("""
+                UPDATE suppliers 
+                SET name = :name, phone = :phone, email = :email, address = :address
+                WHERE supplier_id = :sid
+                RETURNING supplier_id
+            """), {
+                "name": supplier.name,
+                "phone": supplier.phone,
+                "email": supplier.email,
+                "address": supplier.address,
+                "sid": supplier_id
+            })
+            if not result.fetchone():
+                raise HTTPException(status_code=404, detail="Supplier not found")
+        return {"message": "Supplier updated successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/suppliers/{supplier_id}")
+async def delete_supplier(supplier_id: int):
+    try:
+        with engine.begin() as conn:
+            result = conn.execute(text("DELETE FROM suppliers WHERE supplier_id = :sid RETURNING supplier_id"), {"sid": supplier_id})
+            if not result.fetchone():
+                raise HTTPException(status_code=404, detail="Supplier not found")
+        return {"message": "Supplier deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/categories")
+async def add_category(category: Category):
+    try:
+        with engine.begin() as conn:
+            result = conn.execute(text("""
+                INSERT INTO categories (name, description)
+                VALUES (:name, :description)
+                RETURNING category_id
+            """), {
+                "name": category.name,
+                "description": category.description
+            })
+            category_id = result.fetchone()[0]
+        return {"message": "Category added successfully", "category_id": category_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.put("/api/categories/{category_id}")
+async def update_category(category_id: int, category: Category):
+    try:
+        with engine.begin() as conn:
+            result = conn.execute(text("""
+                UPDATE categories 
+                SET name = :name, description = :description
+                WHERE category_id = :cid
+                RETURNING category_id
+            """), {
+                "name": category.name,
+                "description": category.description,
+                "cid": category_id
+            })
+            if not result.fetchone():
+                raise HTTPException(status_code=404, detail="Category not found")
+        return {"message": "Category updated successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/categories/{category_id}")
+async def delete_category(category_id: int):
+    try:
+        with engine.begin() as conn:
+            result = conn.execute(text("DELETE FROM categories WHERE category_id = :cid RETURNING category_id"), {"cid": category_id})
+            if not result.fetchone():
+                raise HTTPException(status_code=404, detail="Category not found")
+        return {"message": "Category deleted successfully"}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -247,14 +373,13 @@ async def create_sale(sale: Sale):
             
             for item in cart:
                 conn.execute(text("""
-                    INSERT INTO sale_items (sale_id, product_id, quantity, unit_price, subtotal)
-                    VALUES (:sale_id, :pid, :qty, :price, :subtotal)
+                    INSERT INTO sale_items (sale_id, product_id, quantity, unit_price)
+                    VALUES (:sale_id, :pid, :qty, :price)
                 """), {
                     "sale_id": sale_id,
                     "pid": item['product_id'],
                     "qty": item['quantity'],
-                    "price": item['price'],
-                    "subtotal": item['subtotal']
+                    "price": item['price']
                 })
                 
                 conn.execute(text("""
@@ -429,7 +554,7 @@ async def get_dashboard_stats():
             recent_sales = conn.execute(text("""
                 SELECT COALESCE(SUM(total_amount), 0) 
                 FROM sales 
-                WHERE DATE(sale_time) = DATE('now')
+                WHERE DATE(sale_time) = CURRENT_DATE
             """)).scalar()
         
         return {
@@ -471,6 +596,140 @@ async def get_notifications():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.put("/api/notifications/{notification_id}")
+async def update_notification(notification_id: int, notification: NotificationUpdate):
+    try:
+        with engine.begin() as conn:
+            result = conn.execute(text("""
+                UPDATE notifications 
+                SET status = :status, read_at = CASE WHEN :status = 'read' THEN NOW() ELSE read_at END
+                WHERE notification_id = :nid
+                RETURNING notification_id
+            """), {
+                "status": notification.status,
+                "nid": notification_id
+            })
+            if not result.fetchone():
+                raise HTTPException(status_code=404, detail="Notification not found")
+        return {"message": "Notification updated successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/purchase-orders")
+async def get_purchase_orders():
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(text("""
+                SELECT po.order_id, po.order_date, po.status, s.name as supplier_name
+                FROM purchase_orders po
+                JOIN suppliers s ON po.supplier_id = s.supplier_id
+                ORDER BY po.order_date DESC
+                LIMIT 50
+            """))
+            rows = result.fetchall()
+        
+        orders = [
+            {
+                "order_id": r[0],
+                "order_date": str(r[1]),
+                "status": r[2],
+                "supplier_name": r[3]
+            }
+            for r in rows
+        ]
+        return {"purchase_orders": orders}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/purchase-orders")
+async def create_purchase_order(order: PurchaseOrder):
+    try:
+        with engine.begin() as conn:
+            result = conn.execute(text("""
+                INSERT INTO purchase_orders (supplier_id, status)
+                VALUES (:supplier_id, :status)
+                RETURNING order_id
+            """), {
+                "supplier_id": order.supplier_id,
+                "status": order.status
+            })
+            order_id = result.fetchone()[0]
+            
+            for item in order.items:
+                conn.execute(text("""
+                    INSERT INTO purchase_order_items (order_id, product_id, quantity, unit_price)
+                    VALUES (:order_id, :product_id, :quantity, :unit_price)
+                """), {
+                    "order_id": order_id,
+                    "product_id": item.get('product_id'),
+                    "quantity": item.get('quantity'),
+                    "unit_price": item.get('unit_price')
+                })
+        
+        return {"message": "Purchase order created successfully", "order_id": order_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/purchase-orders/{order_id}")
+async def get_purchase_order_details(order_id: int):
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(text("""
+                SELECT poi.product_id, p.name, poi.quantity, poi.unit_price
+                FROM purchase_order_items poi
+                JOIN products p ON poi.product_id = p.product_id
+                WHERE poi.order_id = :oid
+            """), {"oid": order_id})
+            rows = result.fetchall()
+        
+        items = [
+            {
+                "product_id": r[0],
+                "product_name": r[1],
+                "quantity": r[2],
+                "unit_price": float(r[3])
+            }
+            for r in rows
+        ]
+        return {"items": items}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.put("/api/purchase-orders/{order_id}/receive")
+async def receive_purchase_order(order_id: int):
+    try:
+        with engine.begin() as conn:
+            result = conn.execute(text("""
+                SELECT poi.product_id, poi.quantity
+                FROM purchase_order_items poi
+                WHERE poi.order_id = :oid
+            """), {"oid": order_id})
+            items = result.fetchall()
+            
+            if not items:
+                raise HTTPException(status_code=404, detail="Purchase order not found")
+            
+            for product_id, quantity in items:
+                conn.execute(text("""
+                    UPDATE products 
+                    SET stock_quantity = stock_quantity + :qty
+                    WHERE product_id = :pid
+                """), {"qty": quantity, "pid": product_id})
+            
+            conn.execute(text("""
+                UPDATE purchase_orders 
+                SET status = 'RECEIVED'
+                WHERE order_id = :oid
+            """), {"oid": order_id})
+        
+        return {"message": "Purchase order received and stock updated"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/api/reports/sales-by-date")
 async def get_sales_by_date(days: int = 7):
     try:
@@ -478,10 +737,10 @@ async def get_sales_by_date(days: int = 7):
             result = conn.execute(text("""
                 SELECT DATE(sale_time) as sale_date, COUNT(*) as count, SUM(total_amount) as total
                 FROM sales
-                WHERE sale_time >= DATE('now', :days_ago)
+                WHERE sale_time >= CURRENT_DATE - CAST(:days || ' days' AS INTERVAL)
                 GROUP BY DATE(sale_time)
                 ORDER BY sale_date ASC
-            """), {"days_ago": f"-{days} days"})
+            """), {"days": days})
             rows = result.fetchall()
         
         data = [

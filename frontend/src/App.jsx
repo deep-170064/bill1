@@ -7,6 +7,10 @@ import Products from './pages/Products';
 import Sales from './pages/Sales';
 import Customers from './pages/Customers';
 import Employees from './pages/Employees';
+import Suppliers from './pages/Suppliers';
+import Categories from './pages/Categories';
+import PurchaseOrders from './pages/PurchaseOrders';
+import Notifications from './pages/Notifications';
 import './App.css';
 
 function PrivateRoute({ children }) {
@@ -62,6 +66,38 @@ function AppRoutes() {
         element={
           <PrivateRoute>
             <Layout><Employees /></Layout>
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/suppliers"
+        element={
+          <PrivateRoute>
+            <Layout><Suppliers /></Layout>
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/categories"
+        element={
+          <PrivateRoute>
+            <Layout><Categories /></Layout>
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/purchase-orders"
+        element={
+          <PrivateRoute>
+            <Layout><PurchaseOrders /></Layout>
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/notifications"
+        element={
+          <PrivateRoute>
+            <Layout><Notifications /></Layout>
           </PrivateRoute>
         }
       />

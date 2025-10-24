@@ -72,6 +72,48 @@ function Layout({ children }) {
               <span className="nav-text">Employees</span>
             </Link>
           )}
+
+          {user?.role === 'ADMIN' && (
+            <Link 
+              to="/suppliers" 
+              className={`nav-item ${isActive('/suppliers') ? 'active' : ''}`}
+              onClick={() => setSidebarOpen(false)}
+            >
+              <span className="nav-icon">🏭</span>
+              <span className="nav-text">Suppliers</span>
+            </Link>
+          )}
+
+          {user?.role === 'ADMIN' && (
+            <Link 
+              to="/categories" 
+              className={`nav-item ${isActive('/categories') ? 'active' : ''}`}
+              onClick={() => setSidebarOpen(false)}
+            >
+              <span className="nav-icon">📁</span>
+              <span className="nav-text">Categories</span>
+            </Link>
+          )}
+
+          {(user?.role === 'ADMIN' || user?.role === 'MANAGER') && (
+            <Link 
+              to="/purchase-orders" 
+              className={`nav-item ${isActive('/purchase-orders') ? 'active' : ''}`}
+              onClick={() => setSidebarOpen(false)}
+            >
+              <span className="nav-icon">📋</span>
+              <span className="nav-text">Purchase Orders</span>
+            </Link>
+          )}
+
+          <Link 
+            to="/notifications" 
+            className={`nav-item ${isActive('/notifications') ? 'active' : ''}`}
+            onClick={() => setSidebarOpen(false)}
+          >
+            <span className="nav-icon">🔔</span>
+            <span className="nav-text">Notifications</span>
+          </Link>
         </nav>
         
         <div className="sidebar-footer">
